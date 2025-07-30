@@ -1,6 +1,8 @@
-﻿// ==UserScript==
 // @name        Visited Links Colorizer (Final v2.6 - Icon Support)
-
+// @namespace   Cascade.VisitedLinks.Final
+// @description Injects a direct CSS rule into all Shadow DOMs to color visited links, including text and SVG icons.
+// @version     2.6
+// @author      Chat GTP
 
 (function ()
 {
