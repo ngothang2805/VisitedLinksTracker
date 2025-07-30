@@ -1,19 +1,32 @@
+// ==UserScript==
 // @name        Visited Links Colorizer (Final v2.6 - Icon Support)
 // @namespace   Cascade.VisitedLinks.Final
 // @description Injects a direct CSS rule into all Shadow DOMs to color visited links, including text and SVG icons.
 // @version     2.6
-// @author      Chat GTP
+// @author      Cascade
+// @match       http*://*/*
+// @exclude     https://mail.live.com/*
+// @grant       none
+// @run-at      document-start
+// ==/UserScript==
 
 (function ()
 {
 
+//// Config
 
+// View your old config from Visited
+// about:config?filter=extensions.visited
+
+// Copy from extensions.visited.color.visited
 var p_color_visited = "LightCoral";
 
-
+// Copy from extensions.visited.except
 var p_except = "mail.live.com,";
 
+//// End Config
 
+//// Variable
 
 const style_id = "visited-lite-7e-style";
 const css_a_visited = " a:visited, a:visited * { color: %COLOR% !important; } ";
@@ -30,7 +43,9 @@ var colorArr = ["Aqua","Blue","BlueViolet","Brown","CadetBlue","Chocolate","Cora
 	,"RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","Sienna","SlateBlue"
 	,"SpringGreen","SteelBlue","Tomato","Turquoise","Violet","YellowGreen"];
 
+//// End Variable
 
+//// Function
 
 function attachOnLoad(callback)
 {
@@ -116,7 +131,7 @@ function main()
 	}
 }
 
-
+//// End Function
 
 attachOnReady(main);
 
