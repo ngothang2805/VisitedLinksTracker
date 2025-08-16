@@ -10,130 +10,115 @@
 // @run-at      document-start
 // ==/UserScript==
 
-(function ()
-{
+(function() {
+    'use strict';
 
-//// Config
+    //// Config
+    const p_color_visited = "LightCoral";
+    const p_except = "mail.live.com,";
+    const style_id_prefix = "visited-links-styler-";
 
-// View your old config from Visited
-// about:config?filter=extensions.visited
+    //// Logic
+    const css_template = `a:visited, a:visited * { color: ${p_color_visited} !important; }`;
 
-// Copy from extensions.visited.color.visited
-var p_color_visited = "LightCoral";
-
-// Copy from extensions.visited.except
-var p_except = "mail.live.com,";
-
-//// End Config
-
-//// Variable
-
-const style_id = "visited-lite-7e-style";
-const css_a_visited = " a:visited, a:visited * { color: %COLOR% !important; } ";
-
-var colorArr = ["Aqua","Blue","BlueViolet","Brown","CadetBlue","Chocolate","Coral"
-    ,"CornflowerBlue","Crimson","DarkGoldenRod","DarkGreen","DarkKhaki","DarkMagenta"
-    ,"Darkorange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkTurquoise"
-    ,"DarkViolet","DeepPink","DeepSkyBlue","DodgerBlue","FireBrick","ForestGreen"
-    ,"Fuchsia","Gold","GoldenRod","Green","GreenYellow","HotPink","IndianRed"
-    ,"Indigo","Khaki","Lavender","LawnGreen","LightCoral","LightSalmon","LightSeaGreen"
-    ,"LightSteelBlue","Lime","LimeGreen","Magenta","Maroon"
-	,"MediumAquaMarine","MediumOrchid","MediumSlateBlue","MediumTurquoise","NavajoWhite","Navy"
-	,"Orange","OrangeRed","Orchid","PaleVioletRed","Peru","Purple","Red","RosyBrown"
-	,"RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","Sienna","SlateBlue"
-	,"SpringGreen","SteelBlue","Tomato","Turquoise","Violet","YellowGreen"];
-
-//// End Variable
-
-//// Function
-
-function attachOnLoad(callback)
-{
-	window.addEventListener("load", function (e)
-	{
-		callback();
-	});
-}
-
-function attachOnReady(callback)
-{
-	document.addEventListener("DOMContentLoaded", function (e)
-	{
-		callback();
-	});
-}
-
-function isExceptSite(except, site)
-{
-    var exceptList = except.split(",");
-    for (var i = 0; i < exceptList.length; i++)
-    {
-        var str = exceptList[i].replace(/\s/ig,"");
-
-        var str1 = str;
-        if (str1.indexOf(".") != 0 && str1.indexOf("/") != 0)
-            str1 = "." + str1;
-
-        var str2 = str;
-        if (str2.indexOf("://") != 0)
-            str2 = "://" + str2;
-
-        if(str != ""
-            && (site.indexOf(str1) > -1 || site.indexOf(str2) > -1))
-        {
-            return true;
-        }
+    function isExceptSite(except, site) {
+        const exceptList = except.split(",").filter(Boolean);
+        return exceptList.some(domain => site.includes(domain.trim()));
     }
-    return false;
-}
 
-function addStyle(css)
-{
-    var style = document.getElementById(style_id);
-    if(style == null)
-    {
-        var heads = document.getElementsByTagName("head");
-
-        if(heads != null && heads.length > 0)
-        {
-            var head = heads[0];
-            var style = document.createElement("style");
-            if(style != null)
-            {
-                style.setAttribute("id",style_id);
-                style.setAttribute("type","text/css");
-                head.appendChild(style);
+    function applyStyles(rootNode) {
+        try {
+            const style = document.createElement('style');
+            style.id = style_id_prefix + (rootNode === document ? 'main' : 'shadow-' + Math.random().toString(36).substr(2, 9));
+            style.textContent = css_template;
+            
+            if (rootNode.head) { // For main document
+                rootNode.head.appendChild(style);
+            } else { // For Shadow DOM
+                rootNode.appendChild(style);
             }
+        } catch (e) {
+            console.error('Failed to apply styles:', e);
         }
     }
 
-    if(style != null)
-    {
-        style.textContent = String(css);
+    function traverseAndApply(node) {
+        // Apply to the node itself if it's a shadow root
+        if (node.shadowRoot) {
+            applyStyles(node.shadowRoot);
+        }
+
+        // Traverse children
+        const allChildren = node.querySelectorAll('*');
+        allChildren.forEach(child => {
+            if (child.shadowRoot) {
+                applyStyles(child.shadowRoot);
+            }
+        });
     }
-}
 
-function assignColor(css, color)
-{
-    return css.replace(/%COLOR%/ig, color);
-}
+    function main() {
+        if (isExceptSite(p_except, window.location.hostname)) {
+            return;
+        }
 
-function main()
-{
-	var url = document.documentURI;
-	var css = "";
+        const run = () => {
+            // Apply to main document
+            applyStyles(document);
 
-	css += assignColor(css_a_visited, p_color_visited);
+            if (!document.body) {
+                // If body doesn't exist yet, wait for it.
+                new MutationObserver((_, obs) => {
+                    if (document.body) {
+                        obs.disconnect();
+                        traverseAndApply(document.body);
+                        observeBody();
+                    }
+                }).observe(document.documentElement, { childList: true });
+            } else {
+                // If body exists, proceed.
+                traverseAndApply(document.body);
+                observeBody();
+            }
+        };
 
-	if(!isExceptSite(p_except, url))
-	{
-		addStyle(css);
-	}
-}
+        const observeBody = () => {
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            traverseAndApply(node);
+                        }
+                    });
+                });
+            });
 
-//// End Function
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        };
 
-attachOnReady(main);
+        run();
+
+        // Add focus listener to force repaint for visited links in other tabs
+        window.addEventListener('focus', () => {
+            if (document.body) {
+                // This is a common trick to force a browser repaint.
+                document.body.style.opacity = '0.9999';
+                setTimeout(() => {
+                    document.body.style.opacity = '1';
+                }, 0);
+            }
+        });
+    }
+
+    // Since @run-at is document-start, we need to wait for the DOM to be ready.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', main);
+    } else {
+        main();
+    }
 
 })();
 
