@@ -103,13 +103,22 @@
 
         // Add focus listener to force repaint for visited links in other tabs
         window.addEventListener('focus', () => {
-            if (document.body) {
-                // This is a common trick to force a browser repaint.
+            if (!document.body) return;
+
+            const forceRepaint = () => {
+                if (!document.body) return; // Re-check in case tab is closed
                 document.body.style.opacity = '0.9999';
                 setTimeout(() => {
-                    document.body.style.opacity = '1';
-                }, 0);
-            }
+                    if (document.body) document.body.style.opacity = '1';
+                }, 10);
+            };
+
+            // Repaint immediately on focus to be responsive.
+            forceRepaint();
+
+            // Schedule additional repaints to handle delays in browser history updates.
+            setTimeout(forceRepaint, 250);
+            setTimeout(forceRepaint, 750);
         });
     }
 
