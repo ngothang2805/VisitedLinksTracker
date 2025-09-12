@@ -101,25 +101,39 @@
 
         run();
 
-        // Add focus listener to force repaint for visited links in other tabs
-        window.addEventListener('focus', () => {
+        // Unified repaint scheduler used by multiple triggers
+        const scheduleRepaints = () => {
             if (!document.body) return;
-
             const forceRepaint = () => {
-                if (!document.body) return; // Re-check in case tab is closed
+                if (!document.body) return;
                 document.body.style.opacity = '0.9999';
+                // Force a reflow to ensure the style change is processed
+                void document.body.offsetHeight;
                 setTimeout(() => {
                     if (document.body) document.body.style.opacity = '1';
                 }, 10);
             };
-
-            // Repaint immediately on focus to be responsive.
+            
             forceRepaint();
+            [250, 750, 1500].forEach(t => setTimeout(forceRepaint, t));
+        };
 
-            // Schedule additional repaints to handle delays in browser history updates.
-            setTimeout(forceRepaint, 250);
-            setTimeout(forceRepaint, 750);
-        });
+        // Repaint when the tab regains focus
+        window.addEventListener('focus', scheduleRepaints);
+
+        // Repaint shortly after the user clicks a link (which may open in a new tab)
+        const clickHandler = (e) => {
+            if (e.defaultPrevented) return;
+            // button === 0 (left) or 1 (middle)
+            if (e.button === 0 || e.button === 1) {
+                const a = e.target.closest('a');
+                if (a && a.href) {
+                    scheduleRepaints();
+                }
+            }
+        };
+        document.addEventListener('click', clickHandler, true);
+        document.addEventListener('auxclick', clickHandler, true);
     }
 
     // Since @run-at is document-start, we need to wait for the DOM to be ready.
